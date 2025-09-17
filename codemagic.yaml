@@ -5,6 +5,6 @@ workflows:
       flutter: 3.35.4  # Update this to match the suggested version
       xcode: 16.2
     scripts:
-      - flutter build ios --simulator --flavor staging
+      - flutter build ios --simulator
     artifacts:
       - build/ios/iphonesimulator/Runner.app
