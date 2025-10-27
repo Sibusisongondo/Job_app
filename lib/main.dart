@@ -1456,6 +1456,9 @@ Shared via SAJobConnect 💼
       return ((listIndex + 1) ~/ 6);
     }
 
+    }
+
+
   int _getJobIndex(int listIndex) {
     // Calculate how many ads have appeared before this index
     int adsBeforeThisIndex = listIndex ~/ 6;
