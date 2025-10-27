@@ -1442,38 +1442,24 @@ Shared via SAJobConnect 💼
   }
 
   int _getItemCount() {
-    return jobs.length + (jobs.length ~/ 5);
+    // One ad for every 5 jobs
+    int adCount = jobs.length ~/ 5;
+    return jobs.length + adCount;
   }
 
   int? _getAdPosition(int listIndex) {
-    int jobsSeen = 0;
-    int adsSeen = 0;
-
-    for (int i = 0; i <= listIndex; i++) {
-      if ((jobsSeen + 1) % 6 == 0 && jobsSeen > 0) {
-        if (i == listIndex) {
-          return adsSeen + 1;
-        }
-        adsSeen++;
-      } else {
-        jobsSeen++;
-      }
+    // Show ad after every 5th job
+    // Positions: Job Job Job Job Job Ad Job Job Job Job Job Ad...
+    // So ads appear at indices: 5, 11, 17, 23, etc.
+    if ((listIndex + 1) % 6 == 0 && listIndex >= 5) {
+      // Return which ad number this is (1, 2, 3, etc.)
+      return ((listIndex + 1) ~/ 6);
     }
-    return null;
-  }
 
   int _getJobIndex(int listIndex) {
-    int jobIndex = 0;
-    int currentIndex = 0;
-
-    for (int i = 0; i < jobs.length; i++) {
-      if (currentIndex == listIndex) return i;
-      currentIndex++;
-      if ((i + 1) % 5 == 0) {
-        currentIndex++;
-      }
-    }
-    return 0;
+    // Calculate how many ads have appeared before this index
+    int adsBeforeThisIndex = listIndex ~/ 6;
+    return listIndex - adsBeforeThisIndex;
   }
 
   @override
