@@ -28,7 +28,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.sajobconnect.app</string>
+			<string>com.SAJobConnect.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>sajobconnect</string>
