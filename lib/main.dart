@@ -6,9 +6,9 @@ import 'dart:async';
 import 'package:share_plus/share_plus.dart';
 import 'app_router.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart'; // Add this
-import 'ad_helper.dart'; // Add this
-import 'ad_manager.dart'; // Add this
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'ad_helper.dart';
+import 'ad_manager.dart';
 
 // --- Modern Color Palette & Fonts ---
 const Color kPrimaryBlue = Color(0xFF1a365d);
@@ -23,18 +23,12 @@ const Color kGray = Color(0xFF6b7280);
 const Color kEmerald = Color(0xFF059669);
 
 const rapidApiKey = 'ak_c64sigsmjo9gklyne4z4h55legp50l2ks8s6wan5bsg849a';
-const apiHost = 'jsearch.p.rapidapi.com';
-
-
+const apiHost = 'api.openwebninja.com';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-   // Initialize Google Mobile Ads
   await AdManager.initialize();
-  
-  // Load first interstitial ad
   AdManager().loadInterstitialAd();
-  
   runApp(const SAJobConnectSimple());
 }
 
@@ -44,25 +38,25 @@ class SAJobConnectSimple extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final router = GoRouter(
-    initialLocation: '/',
-    debugLogDiagnostics: true,
-    routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const MainNavigationPage(),
-      ),
-      GoRoute(
-        path: '/job',
-        redirect: (context, state) {
-          final jobId = state.uri.queryParameters['id'];
-          if (jobId != null && jobId.isNotEmpty) {
-            deepLinkNotifier.setPendingJobId(jobId);
-          }
-          return '/';
-        },
-      ),
-    ],
-  );
+      initialLocation: '/',
+      debugLogDiagnostics: true,
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const MainNavigationPage(),
+        ),
+        GoRoute(
+          path: '/job',
+          redirect: (context, state) {
+            final jobId = state.uri.queryParameters['id'];
+            if (jobId != null && jobId.isNotEmpty) {
+              deepLinkNotifier.setPendingJobId(jobId);
+            }
+            return '/';
+          },
+        ),
+      ],
+    );
     return MaterialApp.router(
       title: 'SAJobConnect',
       themeMode: ThemeMode.system,
@@ -215,11 +209,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
   
   late final List<Widget> _pages;
 
-  // Banner Ad
   BannerAd? _bannerAd;
   bool _isBannerAdReady = false;
-
-  // Track if its the first app open
   bool _hasShownInitialAd = false;
 
   @override
@@ -232,30 +223,26 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
       const PrivacyPolicyPage(),
     ];
     
-    // Listen for deep links
     deepLinkNotifier.addListener(_handleDeepLink);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (deepLinkNotifier.pendingJobId != null) {
-      _handleDeepLink();
-    }
-  });
-
-  // Load banner ad
-    _loadBannerAd();
-
-    // Show interstitial ad on app open
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!_hasShownInitialAd) {
-      AdManager().showInterstitialAd();
-      _hasShownInitialAd = true;
+      if (deepLinkNotifier.pendingJobId != null) {
+        _handleDeepLink();
       }
     });
-}
 
-@override
+    _loadBannerAd();
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (!_hasShownInitialAd) {
+        AdManager().showInterstitialAd();
+        _hasShownInitialAd = true;
+      }
+    });
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Show interstitial ad when app comes to foreground
     if (state == AppLifecycleState.resumed && _hasShownInitialAd) {
       Future.delayed(const Duration(milliseconds: 500), () {
         AdManager().showInterstitialAd();
@@ -278,7 +265,6 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
           print('Banner ad failed to load: $error');
           _isBannerAdReady = false;
           ad.dispose();
-          // Retry after 30 seconds
           Future.delayed(const Duration(seconds: 30), () {
             _loadBannerAd();
           });
@@ -289,17 +275,17 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
     _bannerAd!.load();
   }
 
-void _handleDeepLink() {
-  final jobId = deepLinkNotifier.pendingJobId;
-  if (jobId != null) {
-    print('🎯 Opening job: $jobId');
-    setState(() => _currentIndex = 0);
-    Future.delayed(const Duration(milliseconds: 300), () {
-      _jobListKey.currentState?.openJobById(jobId);
-      deepLinkNotifier.clearPendingJobId();
-    });
+  void _handleDeepLink() {
+    final jobId = deepLinkNotifier.pendingJobId;
+    if (jobId != null) {
+      print('🎯 Opening job: $jobId');
+      setState(() => _currentIndex = 0);
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _jobListKey.currentState?.openJobById(jobId);
+        deepLinkNotifier.clearPendingJobId();
+      });
+    }
   }
-}
 
   @override
   void dispose() {
@@ -350,7 +336,6 @@ void _handleDeepLink() {
               children: _pages,
             ),
           ),
-          // Banner Ad at bottom
           if (_isBannerAdReady && _bannerAd != null)
             Container(
               alignment: Alignment.center,
@@ -557,9 +542,7 @@ class AboutPage extends StatelessWidget {
                   ),
                   shape: BoxShape.circle,
                 ),
-                child:Image.asset('assets/icon/app_icon.png'),
-  
-
+                child: Image.asset('assets/icon/app_icon.png'),
               ),
             ),
             const SizedBox(height: 24),
@@ -865,7 +848,6 @@ class _JobListPageState extends State<JobListPage> {
   final Map<String, int> _pageCountCache = {};
   final Map<String, Map> _jobDetailsCache = {};
 
-  // Native Ads for job list
   final Map<int, NativeAd> _listNativeAds = {};
   final Map<int, bool> _listNativeAdsReady = {};
 
@@ -1037,7 +1019,7 @@ class _JobListPageState extends State<JobListPage> {
       return;
     }
 
-    final url = Uri.https(apiHost, '/search', {
+    final url = Uri.https(apiHost, '/jsearch/search', {
       'query': searchQuery,
       'page': '$currentPage',
       'num_pages': '1',
@@ -1050,8 +1032,7 @@ class _JobListPageState extends State<JobListPage> {
       final resp = await http.get(
         url,
         headers: {
-          'x-rapidapi-host': apiHost,
-          'x-rapidapi-key': rapidApiKey,
+          'x-api-key': rapidApiKey,
         },
       );
 
@@ -1129,7 +1110,7 @@ class _JobListPageState extends State<JobListPage> {
       return _jobDetailsCache[jobId];
     }
 
-    final url = Uri.https(apiHost, '/job-details', {
+    final url = Uri.https(apiHost, '/jsearch/job-details', {
       'job_id': jobId,
       'country': 'rsa',
     });
@@ -1138,8 +1119,7 @@ class _JobListPageState extends State<JobListPage> {
       final resp = await http.get(
         url,
         headers: {
-          'x-rapidapi-host': apiHost,
-          'x-rapidapi-key': rapidApiKey,
+          'x-api-key': rapidApiKey,
         },
       );
 
@@ -1442,25 +1422,18 @@ Shared via SAJobConnect 💼
   }
 
   int _getItemCount() {
-    // One ad for every 5 jobs
     int adCount = jobs.length ~/ 5;
     return jobs.length + adCount;
   }
 
   int? _getAdPosition(int listIndex) {
-    // Show ad after every 5th job
-    // Positions: Job Job Job Job Job Ad Job Job Job Job Job Ad...
-    // So ads appear at indices: 5, 11, 17, 23, etc.
     if ((listIndex + 1) % 6 == 0 && listIndex >= 5) {
-      // Return which ad number this is (1, 2, 3, etc.)
       return ((listIndex + 1) ~/ 6);
     }
-
-    }
-
+    return null;
+  }
 
   int _getJobIndex(int listIndex) {
-    // Calculate how many ads have appeared before this index
     int adsBeforeThisIndex = listIndex ~/ 6;
     return listIndex - adsBeforeThisIndex;
   }
@@ -1744,7 +1717,6 @@ class _JobDetailsContentState extends State<JobDetailsContent> {
   Map? detailedJob;
   bool loadingDetails = false;
 
-  // TWO SEPARATE NATIVE ADS
   NativeAd? _nativeAd1;
   NativeAd? _nativeAd2;
   bool _isNativeAd1Ready = false;
@@ -2121,7 +2093,6 @@ class _JobDetailsContentState extends State<JobDetailsContent> {
                 const SizedBox(height: 12),
                 Text(currentJob['job_description'] ?? 'No description available.', style: const TextStyle(fontSize: 16, height: 1.5, fontFamily: 'Poppins', color: kGray)),
                 
-                // NATIVE AD #1
                 if (_isNativeAd1Ready && _nativeAd1 != null) ...[
                   const SizedBox(height: 20),
                   ConstrainedBox(constraints: const BoxConstraints(maxHeight: 280, minHeight: 150), child: Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: kGray.withOpacity(0.2), width: 1)), child: ClipRRect(borderRadius: BorderRadius.circular(16), child: AdWidget(ad: _nativeAd1!)))),
@@ -2132,7 +2103,6 @@ class _JobDetailsContentState extends State<JobDetailsContent> {
                 _buildHighlightSection('Responsibilities', currentJob['job_highlights']?['Responsibilities'], Icons.work_outline),
                 _buildHighlightSection('Benefits', currentJob['job_highlights']?['Benefits'], Icons.card_giftcard),
                 
-                // NATIVE AD #2
                 if (_isNativeAd2Ready && _nativeAd2 != null) ...[
                   const SizedBox(height: 24),
                   ConstrainedBox(constraints: const BoxConstraints(maxHeight: 280, minHeight: 150), child: Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: kGray.withOpacity(0.2), width: 1)), child: ClipRRect(borderRadius: BorderRadius.circular(16), child: AdWidget(ad: _nativeAd2!)))),
