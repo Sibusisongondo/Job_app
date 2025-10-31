@@ -22,7 +22,7 @@ const Color kCharcoal = Color(0xFF1f2937);
 const Color kGray = Color(0xFF6b7280);
 const Color kEmerald = Color(0xFF059669);
 
-const rapidApiKey = '58f3a94103mshf1bde887e180aa9p193f80jsn6b0133e80ec6';
+const rapidApiKey = 'ak_c64sigsmjo9gklyne4z4h55legp50l2ks8s6wan5bsg849a';
 const apiHost = 'jsearch.p.rapidapi.com';
 
 
