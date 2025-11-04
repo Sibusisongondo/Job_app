@@ -1,5 +1,10 @@
+# Updated Podfile to set platform to iOS 12.0, enforce deployment target for pods,
+# and sanitize stray standalone "-G" tokens from common build flag keys.
+# (Merged with your original Podfile contents.)
+# NOTE: after saving this file run `cd ios && pod install --repo-update`.
+
 # Uncomment this line to define a global platform for your project
-# platform :ios, '13.0'
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -37,7 +42,49 @@ target 'Runner' do
 end
 
 post_install do |installer|
+  # Keep Flutter's additional iOS build settings per-target...
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+
+    # Enforce iOS deployment target and sanitize flags for each build configuration
+    target.build_configurations.each do |config|
+      # Enforce minimum deployment target
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+
+      # Keys to sanitize (remove a stray standalone "-G" token)
+      flags_keys = %w[COMPILER_FLAGS OTHER_CFLAGS OTHER_CPLUSPLUSFLAGS OTHER_LDFLAGS]
+
+      flags_keys.each do |key|
+        val = config.build_settings[key]
+        next unless val
+
+        if val.is_a?(Array)
+          new_arr = val.map do |entry|
+            if entry.is_a?(String)
+              entry.gsub(/(^|\s)-G(\s|$)/, ' ').gsub(/\s+/, ' ').strip
+            else
+              entry
+            end
+          end
+          new_arr = new_arr.map { |e| e.to_s.strip }.reject(&:empty?)
+          config.build_settings[key] = new_arr unless new_arr.empty?
+        else
+          new_val = val.to_s.gsub(/(^|\s)-G(\s|$)/, ' ')
+          new_val = new_val.gsub(/\s+/, ' ').strip
+          config.build_settings[key] = new_val unless new_val.empty?
+        end
+      end
+    end
+  end
+
+  # Also enforce deployment target for aggregate targets / user project targets (defensive)
+  installer.aggregate_targets.each do |aggregate|
+    if aggregate.respond_to?(:user_project) && aggregate.user_project
+      aggregate.user_project.targets.each do |proj_target|
+        proj_target.build_configurations.each do |proj_config|
+          proj_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+        end
+      end
+    end
   end
 end
