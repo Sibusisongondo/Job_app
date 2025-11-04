@@ -49,7 +49,7 @@ post_install do |installer|
     # Enforce iOS deployment target and sanitize flags for each build configuration
     target.build_configurations.each do |config|
       # Enforce minimum deployment target
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
 
       # Keys to sanitize (remove a stray standalone "-G" token)
       flags_keys = %w[COMPILER_FLAGS OTHER_CFLAGS OTHER_CPLUSPLUSFLAGS OTHER_LDFLAGS]
