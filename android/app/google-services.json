@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "252503431163",
+    "project_id": "sajobconnect-750d8",
+    "storage_bucket": "sajobconnect-750d8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:252503431163:android:23b6317d930fa2342c1d5e",
+        "android_client_info": {
+          "package_name": "com.sajobconnect.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDalSboTUajLNQgYNukbpeO5Q38LkhE6fE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

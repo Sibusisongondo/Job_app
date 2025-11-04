@@ -9,6 +9,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'ad_helper.dart';
 import 'ad_manager.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_cache_service.dart';
+import 'firebase_options.dart';
+import 'trending_jobs_widget.dart';
 
 // --- Modern Color Palette & Fonts ---
 const Color kPrimaryBlue = Color(0xFF1a365d);
@@ -27,8 +31,25 @@ const apiHost = 'api.openwebninja.com';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('✅ Firebase initialized');
+  } catch (e) {
+    print('❌ Firebase initialization error: $e');
+  }
+  
+  // Initialize Firebase Cache Service
+  await FirebaseCacheService().initialize();
   await AdManager.initialize();
   AdManager().loadInterstitialAd();
+  // Schedule daily cleanup (runs once per day)
+  Timer.periodic(const Duration(hours: 24), (timer) {
+    FirebaseCacheService().cleanupExpiredCache();
+    FirebaseCacheService().cleanupLocalCache();
+  });
   runApp(const SAJobConnectSimple());
 }
 
@@ -373,10 +394,12 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenHeight < 600;
+    final colorScheme = Theme.of(context).colorScheme;
     
     return Drawer(
       child: Column(
         children: [
+          // Modern Gradient Header
           Container(
             height: isSmallScreen ? 100 : 140,
             decoration: BoxDecoration(
@@ -391,89 +414,134 @@ class AppDrawer extends StatelessWidget {
             ),
             child: SafeArea(
               child: Padding(
-                padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: isSmallScreen ? 50 : 60,
-                        height: isSmallScreen ? 50 : 60,
-                        decoration: BoxDecoration(
-                          color: kWhite.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Image.asset('assets/icon/app_icon.png'),
-                      ),
-                      SizedBox(height: isSmallScreen ? 6 : 8),
-                      Text(
-                        'SAJobConnect',
-                        style: TextStyle(
-                          color: kWhite,
-                          fontSize: isSmallScreen ? 18 : 20,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                      if (!isSmallScreen)
-                        Text(
-                          'Find your dream job',
-                          style: TextStyle(
-                            color: kWhite.withOpacity(0.8),
-                            fontSize: 12,
-                            fontFamily: 'Poppins',
+                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                child: Row(
+                  children: [
+                    // Icon Container with better blending
+                    Container(
+                      width: isSmallScreen ? 50 : 60,
+                      height: isSmallScreen ? 50 : 60,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: kWhite,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/icon/app_icon.png',
+                          fit: BoxFit.cover,
                         ),
-                    ],
-                  ),
+                      ),
+                    ),
+                    
+                    SizedBox(width: isSmallScreen ? 12 : 16),
+                    
+                    // Text Content
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'SAJobConnect',
+                            style: TextStyle(
+                              color: kWhite,
+                              fontSize: isSmallScreen ? 18 : 22,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Poppins',
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          if (!isSmallScreen) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Find your dream job',
+                              style: TextStyle(
+                                color: kWhite.withOpacity(0.9),
+                                fontSize: 13,
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+          
+          // Menu Items
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 4 : 8),
-              children: [
-                _buildDrawerItem(
-                  context,
-                  icon: Icons.search,
-                  title: 'Job Search',
-                  index: 0,
-                  isSelected: currentIndex == 0,
-                  isSmallScreen: isSmallScreen,
-                ),
-                _buildDrawerItem(
-                  context,
-                  icon: Icons.info_outline,
-                  title: 'About',
-                  index: 1,
-                  isSelected: currentIndex == 1,
-                  isSmallScreen: isSmallScreen,
-                ),
-                _buildDrawerItem(
-                  context,
-                  icon: Icons.privacy_tip_outlined,
-                  title: 'Privacy Policy',
-                  index: 2,
-                  isSelected: currentIndex == 2,
-                  isSmallScreen: isSmallScreen,
-                ),
-                Divider(height: isSmallScreen ? 12 : 16, thickness: 1),
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 4 : 8, horizontal: 16),
-                  child: Text(
-                    'Version 1.0.0',
-                    style: TextStyle(
-                      color: kGray,
-                      fontSize: isSmallScreen ? 10 : 11,
-                      fontFamily: 'Poppins',
-                    ),
-                    textAlign: TextAlign.center,
+            child: Container(
+              color: colorScheme.surface,
+              child: ListView(
+                padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 8 : 12),
+                children: [
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.search,
+                    title: 'Job Search',
+                    index: 0,
+                    isSelected: currentIndex == 0,
+                    isSmallScreen: isSmallScreen,
                   ),
-                ),
-              ],
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.info_outline,
+                    title: 'About',
+                    index: 1,
+                    isSelected: currentIndex == 1,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  _buildDrawerItem(
+                    context,
+                    icon: Icons.privacy_tip_outlined,
+                    title: 'Privacy Policy',
+                    index: 2,
+                    isSelected: currentIndex == 2,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  
+                  // Divider with theme-aware color
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: isSmallScreen ? 8 : 12,
+                      horizontal: 16,
+                    ),
+                    child: Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: colorScheme.onSurface.withOpacity(0.12),
+                    ),
+                  ),
+                  
+                  // Version Text
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'Version 1.0.0',
+                      style: TextStyle(
+                        color: colorScheme.onSurface.withOpacity(0.4),
+                        fontSize: isSmallScreen ? 11 : 12,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w300,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -489,31 +557,48 @@ class AppDrawer extends StatelessWidget {
     required bool isSelected,
     required bool isSmallScreen,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 8, vertical: isSmallScreen ? 1 : 2),
+      margin: EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: isSmallScreen ? 2 : 3,
+      ),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: isSelected ? kAccentTeal.withOpacity(0.1) : Colors.transparent,
+        color: isSelected 
+            ? kAccentTeal.withOpacity(0.12)
+            : Colors.transparent,
       ),
       child: ListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: isSmallScreen ? 0 : 2),
-        minTileHeight: isSmallScreen ? 40 : 50,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: isSmallScreen ? 2 : 4,
+        ),
+        minTileHeight: isSmallScreen ? 44 : 52,
         leading: Icon(
           icon,
-          color: isSelected ? kAccentTeal : kGray,
-          size: isSmallScreen ? 20 : 22,
+          color: isSelected 
+              ? kAccentTeal 
+              : colorScheme.onSurface.withOpacity(0.6),
+          size: isSmallScreen ? 22 : 24,
         ),
         title: Text(
           title,
           style: TextStyle(
-            color: isSelected ? kAccentTeal : Theme.of(context).colorScheme.onSurface,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            color: isSelected 
+                ? kAccentTeal 
+                : colorScheme.onSurface,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
             fontFamily: 'Poppins',
-            fontSize: isSmallScreen ? 13 : 15,
+            fontSize: isSmallScreen ? 14 : 15,
           ),
         ),
         onTap: () => onItemSelected(index),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        hoverColor: colorScheme.onSurface.withOpacity(0.05),
       ),
     );
   }
@@ -524,99 +609,168 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Hero Section with App Icon
             Center(
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [kPrimaryBlue, kAccentTeal],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Image.asset('assets/icon/app_icon.png'),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'About SAJobConnect',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: kPrimaryBlue,
-                fontFamily: 'Poppins',
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            _buildInfoSection(
-              'Our Mission',
-              'SAJobConnect is dedicated to connecting talented South Africans with their dream careers. We believe that everyone deserves access to quality job opportunities, and we\'re here to make that journey easier.',
-              Icons.rocket_launch,
-            ),
-            _buildInfoSection(
-              'What We Do',
-              'We aggregate job listings from across South Africa, providing you with a comprehensive platform to search, filter, and apply for positions that match your skills and career goals.',
-              Icons.search,
-            ),
-            _buildInfoSection(
-              'Why Choose Us',
-              'Our platform focuses specifically on the South African job market, ensuring that all listings are relevant and accessible to local job seekers. We provide detailed job information, company ratings, and direct application links.',
-              Icons.star,
-            ),
-            _buildInfoSection(
-              'Contact Us',
-              'Have questions or feedback? We\'d love to hear from you. Reach out to us at support@sajobconnect.co.za',
-              Icons.email,
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    kAccentTeal.withOpacity(0.1),
-                    kPrimaryBlue.withOpacity(0.1),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: kAccentTeal.withOpacity(0.3)),
-              ),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.favorite,
-                    color: kAccentOrange,
-                    size: 40,
+                  Container(
+                    width: 120,
+                    height: 120,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [kPrimaryBlue, kAccentTeal],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: kAccentTeal.withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: kWhite,
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/icon/app_icon.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   Text(
-                    'Made with ❤️ for South Africa',
+                    'About SAJobConnect',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: kPrimaryBlue,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onBackground,
                       fontFamily: 'Poppins',
+                      letterSpacing: 0.5,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
+                    'Connecting South Africans with opportunities',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: colorScheme.onBackground.withOpacity(0.6),
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w300,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Info Sections
+            _buildInfoSection(
+              context,
+              'Our Mission',
+              'SAJobConnect is dedicated to connecting talented South Africans with their dream careers. We believe that everyone deserves access to quality job opportunities, and we\'re here to make that journey easier.',
+              Icons.rocket_launch,
+              kAccentTeal,
+            ),
+            
+            _buildInfoSection(
+              context,
+              'What We Do',
+              'We aggregate job listings from across South Africa, providing you with a comprehensive platform to search, filter, and apply for positions that match your skills and career goals.',
+              Icons.search,
+              kAccentPurple,
+            ),
+            
+            _buildInfoSection(
+              context,
+              'Why Choose Us',
+              'Our platform focuses specifically on the South African job market, ensuring that all listings are relevant and accessible to local job seekers. We provide detailed job information, company ratings, and direct application links.',
+              Icons.star,
+              kAccentOrange,
+            ),
+            
+            _buildInfoSection(
+              context,
+              'Contact Us',
+              'Have questions or feedback? We\'d love to hear from you. Reach out to us at support@sajobconnect.co.za',
+              Icons.email,
+              kEmerald,
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Footer Card
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    kAccentTeal.withOpacity(isDark ? 0.15 : 0.1),
+                    kPrimaryBlue.withOpacity(isDark ? 0.15 : 0.1),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: kAccentTeal.withOpacity(0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: kAccentOrange.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.favorite,
+                      color: kAccentOrange,
+                      size: 40,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Made with ❤️ for South Africa',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onBackground,
+                      fontFamily: 'Poppins',
+                      letterSpacing: 0.3,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
                     'Empowering careers, one job at a time',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: kGray,
+                      fontSize: 15,
+                      color: colorScheme.onBackground.withOpacity(0.6),
                       fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w300,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -629,17 +783,32 @@ class AboutPage extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoSection(String title, String content, IconData icon) {
+  Widget _buildInfoSection(
+    BuildContext context,
+    String title,
+    String content,
+    IconData icon,
+    Color accentColor,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: kWhite,
-        borderRadius: BorderRadius.circular(16),
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.onSurface.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: kPrimaryBlue.withOpacity(0.06),
-            blurRadius: 10,
+            color: isDark 
+                ? Colors.black.withOpacity(0.2)
+                : accentColor.withOpacity(0.08),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -652,13 +821,13 @@ class AboutPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: kAccentTeal.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: accentColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   icon,
-                  color: kAccentTeal,
-                  size: 24,
+                  color: accentColor,
+                  size: 26,
                 ),
               ),
               const SizedBox(width: 16),
@@ -668,8 +837,9 @@ class AboutPage extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: kPrimaryBlue,
+                    color: colorScheme.onSurface,
                     fontFamily: 'Poppins',
+                    letterSpacing: 0.3,
                   ),
                 ),
               ),
@@ -679,10 +849,11 @@ class AboutPage extends StatelessWidget {
           Text(
             content,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               height: 1.6,
-              color: kGray,
+              color: colorScheme.onSurface.withOpacity(0.7),
               fontFamily: 'Poppins',
+              fontWeight: FontWeight.w300,
             ),
           ),
         ],
@@ -872,11 +1043,30 @@ class _JobListPageState extends State<JobListPage> {
     'month': 'Month'
   };
 
+  // Add cache statistics tracking
+  int _cacheHits = 0;
+  int _cacheMisses = 0;
+
   @override
   void initState() {
     super.initState();
     _searchController.text = '';
+    // Cleanup old local cache on app start
+    FirebaseCacheService().cleanupLocalCache();
+    
+    // Log cache stats
+    _logCacheStats();
     fetchJobs();
+  }
+
+  Future<void> _logCacheStats() async {
+    final stats = await FirebaseCacheService().getStats();
+    if (stats != null) {
+      print('📊 Global Stats:');
+      print('  API Calls Saved: ${stats['api_calls_saved'] ?? 0}');
+      print('  Cache Hits: ${stats['cache_hits'] ?? 0}');
+      print('  Cache Misses: ${stats['cache_misses'] ?? 0}');
+    }
   }
 
   void _loadNativeAdForPosition(int position) {
@@ -999,6 +1189,7 @@ class _JobListPageState extends State<JobListPage> {
 
   String _makeCacheKey(String query, int page) => '$query|$page';
 
+    // ========== UPDATED fetchJobs with Firebase ===========
   Future<void> fetchJobs({String? query, int? page}) async {
     setState(() {
       loading = true;
@@ -1008,22 +1199,45 @@ class _JobListPageState extends State<JobListPage> {
       if (page != null) currentPage = page;
     });
 
-    final cacheKey = '${searchQuery}|${currentPage}|${selectedJobType}|${selectedDatePosted}';
+    final firebaseCache = FirebaseCacheService();
 
-    if (_jobCache.containsKey(cacheKey)) {
+    // STEP 1: Check Firebase cache (includes local + cloud)
+    final cachedData = await firebaseCache.getCachedSearch(
+      query: searchQuery,
+      page: currentPage,
+      jobType: selectedJobType,
+      datePosted: selectedDatePosted,
+    );
+
+    if (cachedData != null) {
+      // ✅ CACHE HIT - No API call needed!
       setState(() {
-        jobs = _jobCache[cacheKey]!;
-        totalPages = _pageCountCache[searchQuery] ?? 1;
+        jobs = cachedData['jobs'] as List;
+        totalPages = cachedData['total_pages'] as int;
         loading = false;
       });
+      
+      _cacheHits++;
+      
+      // Update global stats (async)
+      firebaseCache.updateStats(
+        cacheHits: 1,
+        apiCallsSaved: 1,
+      );
+      
+      print('💰 API call SAVED! Cache hit rate: ${(_cacheHits / (_cacheHits + _cacheMisses) * 100).toStringAsFixed(1)}%');
       return;
     }
+
+    // STEP 2: Cache MISS - Make API call
+    _cacheMisses++;
+    print('📡 Cache miss - making API call. Hit rate: ${(_cacheHits / (_cacheHits + _cacheMisses) * 100).toStringAsFixed(1)}%');
 
     final url = Uri.https(apiHost, '/jsearch/search', {
       'query': searchQuery,
       'page': '$currentPage',
       'num_pages': '1',
-      'country': 'rsa',
+      'country': 'za',
       'date_posted': selectedDatePosted,
       if (selectedJobType != 'all') 'employment_types': selectedJobType,
     });
@@ -1065,14 +1279,34 @@ class _JobListPageState extends State<JobListPage> {
           return dateB.compareTo(dateA);
         });
 
-        _jobCache[cacheKey] = filtered;
-        _pageCountCache[searchQuery] = pages;
+        // STEP 3: Save to cache (both local + Firebase)
+        await firebaseCache.cacheSearch(
+          query: searchQuery,
+          page: currentPage,
+          jobType: selectedJobType,
+          datePosted: selectedDatePosted,
+          jobs: filtered,
+          totalPages: pages,
+        );
+
+        // STEP 4: Cache individual job details
+        for (final job in filtered) {
+          final jobId = job['job_id'];
+          if (jobId != null) {
+            firebaseCache.cacheJobDetails(jobId, job);
+          }
+        }
+
+        // Update stats
+        firebaseCache.updateStats(cacheMisses: 1);
 
         setState(() {
           jobs = filtered;
           loading = false;
           totalPages = pages;
         });
+
+        print('✅ Data cached for other users to benefit');
       } else {
         setState(() {
           errorMsg = 'API error: ${resp.reasonPhrase}';
@@ -1105,14 +1339,25 @@ class _JobListPageState extends State<JobListPage> {
     });
   }
 
+  // ========== UPDATED fetchJobDetails with Firebase ===========
   Future<Map?> fetchJobDetails(String jobId) async {
-    if (_jobDetailsCache.containsKey(jobId)) {
-      return _jobDetailsCache[jobId];
+    final firebaseCache = FirebaseCacheService();
+
+    // Check Firebase cache (includes local + cloud)
+    final cachedJob = await firebaseCache.getCachedJobDetails(jobId);
+    if (cachedJob != null) {
+      print('💰 Job details from cache - API call saved!');
+      firebaseCache.updateStats(
+        cacheHits: 1,
+        apiCallsSaved: 1,
+      );
+      return cachedJob;
     }
 
+    // Make API call
     final url = Uri.https(apiHost, '/jsearch/job-details', {
       'job_id': jobId,
-      'country': 'rsa',
+      'country': 'za',
     });
 
     try {
@@ -1128,7 +1373,10 @@ class _JobListPageState extends State<JobListPage> {
         final jobDetails = data['data']?.isNotEmpty == true ? data['data'][0] : null;
 
         if (jobDetails != null) {
-          _jobDetailsCache[jobId] = jobDetails;
+          // Cache for other users
+          await firebaseCache.cacheJobDetails(jobId, jobDetails);
+          firebaseCache.updateStats(cacheMisses: 1);
+          
           return jobDetails;
         }
       }
@@ -1350,24 +1598,26 @@ class _JobListPageState extends State<JobListPage> {
   }
 
   void _shareJob(Map job) {
-    final jobId = job['job_id'];
-    final jobTitle = job['job_title'] ?? 'Job Opening';
-    final company = job['employer_name'] ?? '';
-    final location = job['job_location'] ?? job['location'] ?? '';
+  final jobId = job['job_id'];
+  final jobTitle = job['job_title'] ?? 'Job Opening';
+  final company = job['employer_name'] ?? '';
+  final location = job['job_location'] ?? job['location'] ?? '';
 
-    if (jobId == null) {
+  if (jobId == null) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Unable to share this job'),
           backgroundColor: kAccentOrange,
         ),
       );
-      return;
     }
+    return;
+  }
 
-    final link = 'https://sajobconnect.co.za/job?id=$jobId';
+  final link = 'https://sajobconnect.co.za/job?id=$jobId';
 
-    final message = '''
+  final message = '''
 🎯 Check out this job opportunity!
 
 📋 $jobTitle${company.isNotEmpty ? '\n🏢 $company' : ''}${location.isNotEmpty ? '\n📍 $location' : ''}
@@ -1377,40 +1627,46 @@ class _JobListPageState extends State<JobListPage> {
 Shared via SAJobConnect 💼
 ''';
 
-    final box = context.findRenderObject() as RenderBox?;
+  // FIX FOR IPAD: Use screen center coordinates
+  final screenSize = MediaQuery.of(context).size;
+  final sharePositionOrigin = Rect.fromLTWH(
+    screenSize.width / 2,
+    screenSize.height / 2,
+    1,
+    1,
+  );
 
-    Share.share(
-      message,
-      subject: 'Job Opportunity: $jobTitle',
-      sharePositionOrigin:
-          box != null ? box.localToGlobal(Offset.zero) & box.size : null,
-    ).then((result) {
-      if (result.status == ShareResultStatus.success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: kWhite),
-                const SizedBox(width: 12),
-                const Expanded(child: Text('Job shared successfully!')),
-              ],
-            ),
-            backgroundColor: kAccentTeal,
-            duration: const Duration(seconds: 2),
+  Share.share(
+    message,
+    subject: 'Job Opportunity: $jobTitle',
+    sharePositionOrigin: sharePositionOrigin,
+  ).then((result) {
+    if (result.status == ShareResultStatus.success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: kWhite),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Job shared successfully!')),
+            ],
           ),
-        );
-      }
-    }).catchError((error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not share: $error'),
-            backgroundColor: kAccentOrange,
-          ),
-        );
-      }
-    });
-  }
+          backgroundColor: kAccentTeal,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }).catchError((error) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not share: $error'),
+          backgroundColor: kAccentOrange,
+        ),
+      );
+    }
+  });
+}
 
   static String _formatDate(String isoDate) {
     try {
@@ -1449,250 +1705,293 @@ Shared via SAJobConnect 💼
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-          child: Material(
-            elevation: 2,
-            borderRadius: BorderRadius.circular(24),
-            child: TextField(
-              controller: _searchController,
-              style: TextStyle(
-                  fontSize: 17, fontFamily: 'Poppins', color: kCharcoal),
-              decoration: InputDecoration(
-                hintText:
-                    'Search jobs (e.g. software engineer, cape town)...',
-                prefixIcon: Icon(Icons.search, color: kAccentTeal),
-                border: InputBorder.none,
-                filled: true,
-                fillColor: kWhite,
-                suffixIcon: IconButton(
-                  icon: Icon(Icons.clear, color: kGray),
-                  onPressed: () {
-                    _searchController.clear();
-                    fetchJobs(query: 'all jobs in south africa', page: 1);
-                  },
-                ),
+Widget build(BuildContext context) {
+  return Column(
+    children: [
+      // Fixed search bar at top
+      Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+        child: Material(
+          elevation: 2,
+          borderRadius: BorderRadius.circular(24),
+          child: TextField(
+            controller: _searchController,
+            style: TextStyle(
+                fontSize: 17, fontFamily: 'Poppins', color: kCharcoal),
+            decoration: InputDecoration(
+              hintText:
+                  'Search jobs (e.g. software engineer, cape town)...',
+              prefixIcon: Icon(Icons.search, color: kAccentTeal),
+              border: InputBorder.none,
+              filled: true,
+              fillColor: kWhite,
+              suffixIcon: IconButton(
+                icon: Icon(Icons.clear, color: kGray),
+                onPressed: () {
+                  _searchController.clear();
+                  fetchJobs(query: 'all jobs in south africa', page: 1);
+                },
               ),
-              onChanged: _onSearch,
-              onSubmitted: (text) => fetchJobs(query: text.trim(), page: 1),
             ),
+            onChanged: _onSearch,
+            onSubmitted: (text) => fetchJobs(query: text.trim(), page: 1),
           ),
         ),
-        if (loading)
-          const Expanded(
-              child: Center(
-                  child: CircularProgressIndicator(color: kAccentTeal)))
-        else if (errorMsg.isNotEmpty)
-          Expanded(
-              child: Center(
-                  child: Text(errorMsg,
-                      style: const TextStyle(
-                          color: kAccentOrange, fontFamily: 'Poppins'))))
-        else if (jobs.isEmpty)
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.work_off,
-                      size: 60,
-                      color: kAccentTeal.withOpacity(0.18)),
-                  const SizedBox(height: 14),
-                  const Text('No jobs found.',
-                      style: TextStyle(
-                          fontSize: 18, color: kGray, fontFamily: 'Poppins')),
-                ],
-              ),
-            ),
+      ),
+      
+      // Scrollable content area - everything scrolls together
+      if (loading)
+        const Expanded(
+          child: Center(
+            child: CircularProgressIndicator(color: kAccentTeal)
           )
-        else
-          Expanded(
-            child: ListView.separated(
-              itemCount: _getItemCount(),
-              separatorBuilder: (_, __) => const SizedBox(height: 1),
-              itemBuilder: (context, index) {
-                final adPosition = _getAdPosition(index);
-                if (adPosition != null) {
-                  _loadNativeAdForPosition(adPosition);
-
-                  if (_listNativeAdsReady[adPosition] == true &&
-                      _listNativeAds[adPosition] != null) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 12),
-                      child: SizedBox(
-                        height: 250,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                                color: kGray.withOpacity(0.2), width: 1),
-                          ),
-                          child: AdWidget(ad: _listNativeAds[adPosition]!),
-                        ),
-                      ),
-                    );
-                  } else {
-                    return const SizedBox.shrink();
-                  }
-                }
-
-                final jobIndex = _getJobIndex(index);
-                final job = jobs[jobIndex];
-                final salary = _formatSalary(job);
-
-                return Card(
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 16),
-                    leading: CircleAvatar(
-                      backgroundColor: kAccentTeal.withOpacity(0.07),
-                      radius: 28,
-                      child: job['employer_logo'] != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(28),
-                              child: Image.network(
-                                job['employer_logo'],
-                                width: 56,
-                                height: 56,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Icon(
-                                  Icons.work,
-                                  color: kAccentTeal,
-                                  size: 32,
-                                ),
-                              ),
-                            )
-                          : Icon(Icons.work, color: kAccentTeal, size: 32),
-                    ),
-                    title: Text(
-                      job['job_title'] ?? '',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                          fontFamily: 'Poppins',
-                          color: Theme.of(context).colorScheme.onSurface),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${job['employer_name'] ?? ''} • ${job['job_location'] ?? job['location'] ?? ''}',
-                            style: TextStyle(
-                                fontSize: 14,
-                                color: kAccentTeal,
-                                fontFamily: 'Poppins'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          if (salary.isNotEmpty) ...[
-                            Text(
-                              salary,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: kEmerald,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                          ],
-                          Row(
-                            children: [
-                              Icon(Icons.calendar_today,
-                                  size: 13,
-                                  color: kAccentPurple.withOpacity(0.15)),
-                              const SizedBox(width: 4),
-                              Text(
-                                job['job_posted_at_datetime_utc'] != null
-                                    ? _formatDate(
-                                        job['job_posted_at_datetime_utc'])
-                                    : job['job_posted_at'] ?? '',
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color: kGray,
-                                    fontFamily: 'Poppins'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Chip(
-                          label: Text(
-                            job['job_employment_type'] ?? 'Unknown',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: kAccentTeal,
-                              fontSize: 13,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                          backgroundColor: kAccentTeal.withOpacity(0.15),
-                        ),
-                      ],
-                    ),
-                    onTap: () => _showJobDetails(context, job),
-                    onLongPress: () => _shareJob(job),
-                  ),
-                );
-              },
-            ),
-          ),
-        if (!loading && jobs.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-            child: Row(
+        )
+      else if (errorMsg.isNotEmpty)
+        Expanded(
+          child: Center(
+            child: Text(
+              errorMsg,
+              style: const TextStyle(
+                color: kAccentOrange, 
+                fontFamily: 'Poppins'
+              )
+            )
+          )
+        )
+      else if (jobs.isEmpty)
+        Expanded(
+          child: Center(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                OutlinedButton.icon(
-                  icon: Icon(Icons.arrow_back_ios,
-                      size: 13, color: kAccentTeal),
-                  label: Text('Prev',
-                      style: TextStyle(
-                          fontFamily: 'Poppins', color: kAccentTeal)),
-                  onPressed: currentPage > 1 && !loading
-                      ? () => fetchJobs(page: currentPage - 1)
-                      : null,
+                Icon(
+                  Icons.work_off,
+                  size: 60,
+                  color: kAccentTeal.withOpacity(0.18)
                 ),
-                const SizedBox(width: 18),
-                Text(
-                  'Page $currentPage${totalPages > 1 ? ' of $totalPages' : ''}',
+                const SizedBox(height: 14),
+                const Text(
+                  'No jobs found.',
                   style: TextStyle(
-                    color: kPrimaryBlue,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-                const SizedBox(width: 18),
-                OutlinedButton.icon(
-                  icon: Icon(Icons.arrow_forward_ios,
-                      size: 13, color: kAccentTeal),
-                  label: Text('Next',
-                      style: TextStyle(
-                          fontFamily: 'Poppins', color: kAccentTeal)),
-                  onPressed: !loading && (currentPage < totalPages)
-                      ? () => fetchJobs(page: currentPage + 1)
-                      : null,
+                    fontSize: 18, 
+                    color: kGray, 
+                    fontFamily: 'Poppins'
+                  )
                 ),
               ],
             ),
           ),
-      ],
-    );
-  }
+        )
+      else
+        // ✅ NEW: Single scrollable area with trending + jobs
+        Expanded(
+          child: CustomScrollView(
+            slivers: [
+              // Trending section (scrolls away)
+              if (searchQuery == 'all jobs in south africa' && currentPage == 1 && jobs.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: TrendingJobsSection(
+                    onSearchTap: (query) {
+                      _searchController.text = query;
+                      fetchJobs(query: '$query south africa', page: 1);
+                    },
+                    onJobTap: (job) {
+                      _showJobDetails(context, job);
+                    },
+                  ),
+                ),
+              
+              // Job list
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final adPosition = _getAdPosition(index);
+                    
+                    if (adPosition != null) {
+                      _loadNativeAdForPosition(adPosition);
+
+                      if (_listNativeAdsReady[adPosition] == true &&
+                          _listNativeAds[adPosition] != null) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 12),
+                          child: SizedBox(
+                            height: 250,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                    color: kGray.withOpacity(0.2), width: 1),
+                              ),
+                              child: AdWidget(ad: _listNativeAds[adPosition]!),
+                            ),
+                          ),
+                        );
+                      } else {
+                        return const SizedBox.shrink();
+                      }
+                    }
+
+                    final jobIndex = _getJobIndex(index);
+                    final job = jobs[jobIndex];
+                    final salary = _formatSalary(job);
+
+                    return Card(
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 16),
+                        leading: CircleAvatar(
+                          backgroundColor: kAccentTeal.withOpacity(0.07),
+                          radius: 28,
+                          child: job['employer_logo'] != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(28),
+                                  child: Image.network(
+                                    job['employer_logo'],
+                                    width: 56,
+                                    height: 56,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                      Icons.work,
+                                      color: kAccentTeal,
+                                      size: 32,
+                                    ),
+                                  ),
+                                )
+                              : Icon(Icons.work, color: kAccentTeal, size: 32),
+                        ),
+                        title: Text(
+                          job['job_title'] ?? '',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                              fontFamily: 'Poppins',
+                              color: Theme.of(context).colorScheme.onSurface),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${job['employer_name'] ?? ''} • ${job['job_location'] ?? job['location'] ?? ''}',
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    color: kAccentTeal,
+                                    fontFamily: 'Poppins'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              if (salary.isNotEmpty) ...[
+                                Text(
+                                  salary,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: kEmerald,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'Poppins',
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                              ],
+                              Row(
+                                children: [
+                                  Icon(Icons.calendar_today,
+                                      size: 13,
+                                      color: kAccentPurple.withOpacity(0.15)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    job['job_posted_at_datetime_utc'] != null
+                                        ? _formatDate(
+                                            job['job_posted_at_datetime_utc'])
+                                        : job['job_posted_at'] ?? '',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: kGray,
+                                        fontFamily: 'Poppins'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Chip(
+                              label: Text(
+                                job['job_employment_type'] ?? 'Unknown',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: kAccentTeal,
+                                  fontSize: 13,
+                                  fontFamily: 'Poppins',
+                                ),
+                              ),
+                              backgroundColor: kAccentTeal.withOpacity(0.15),
+                            ),
+                          ],
+                        ),
+                        onTap: () => _showJobDetails(context, job),
+                        onLongPress: () => _shareJob(job),
+                      ),
+                    );
+                  },
+                  childCount: _getItemCount(),
+                ),
+              ),
+              
+              // Pagination at bottom (also scrollable)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      OutlinedButton.icon(
+                        icon: Icon(Icons.arrow_back_ios,
+                            size: 13, color: kAccentTeal),
+                        label: Text('Prev',
+                            style: TextStyle(
+                                fontFamily: 'Poppins', color: kAccentTeal)),
+                        onPressed: currentPage > 1 && !loading
+                            ? () => fetchJobs(page: currentPage - 1)
+                            : null,
+                      ),
+                      const SizedBox(width: 18),
+                      Text(
+                        'Page $currentPage${totalPages > 1 ? ' of $totalPages' : ''}',
+                        style: TextStyle(
+                          color: kPrimaryBlue,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      OutlinedButton.icon(
+                        icon: Icon(Icons.arrow_forward_ios,
+                            size: 13, color: kAccentTeal),
+                        label: Text('Next',
+                            style: TextStyle(
+                                fontFamily: 'Poppins', color: kAccentTeal)),
+                        onPressed: !loading && (currentPage < totalPages)
+                            ? () => fetchJobs(page: currentPage + 1)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
+}
 }
 
 class JobDetailsContent extends StatefulWidget {
