@@ -42,42 +42,25 @@ target 'Runner' do
 end
 
 post_install do |installer|
-  # Keep Flutter's additional iOS build settings per-target...
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
-
-    # Enforce iOS deployment target and sanitize flags for each build configuration
     target.build_configurations.each do |config|
-      # Enforce minimum deployment target
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-
-      # Keys to sanitize (remove a stray standalone "-G" token)
-      flags_keys = %w[COMPILER_FLAGS OTHER_CFLAGS OTHER_CPLUSPLUSFLAGS OTHER_LDFLAGS]
-
-      flags_keys.each do |key|
-        val = config.build_settings[key]
-        next unless val
-
-        if val.is_a?(Array)
-          new_arr = val.map do |entry|
-            if entry.is_a?(String)
-              entry.gsub(/(^|\s)-G(\s|$)/, ' ').gsub(/\s+/, ' ').strip
-            else
-              entry
-            end
-          end
-          new_arr = new_arr.map { |e| e.to_s.strip }.reject(&:empty?)
-          config.build_settings[key] = new_arr unless new_arr.empty?
+      keys = %w[COMPILER_FLAGS OTHER_CFLAGS OTHER_CPLUSPLUSFLAGS OTHER_LDFLAGS]
+      keys.each do |k|
+        v = config.build_settings[k]
+        next unless v
+        if v.is_a?(Array)
+          new_v = v.map { |e| e.is_a?(String) ? e.gsub(/(^|\s)-G(\s|$)/, ' ').gsub(/\s+/, ' ').strip : e }
+          new_v = new_v.map(&:to_s).map(&:strip).reject(&:empty?)
+          config.build_settings[k] = new_v unless new_v.empty?
         else
-          new_val = val.to_s.gsub(/(^|\s)-G(\s|$)/, ' ')
-          new_val = new_val.gsub(/\s+/, ' ').strip
-          config.build_settings[key] = new_val unless new_val.empty?
+          nv = v.to_s.gsub(/(^|\s)-G(\s|$)/, ' ').gsub(/\s+/, ' ').strip
+          config.build_settings[k] = nv unless nv.empty?
         end
       end
     end
   end
-
-  # Also enforce deployment target for aggregate targets / user project targets (defensive)
   installer.aggregate_targets.each do |aggregate|
     if aggregate.respond_to?(:user_project) && aggregate.user_project
       aggregate.user_project.targets.each do |proj_target|
